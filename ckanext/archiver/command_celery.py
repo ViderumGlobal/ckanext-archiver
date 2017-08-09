@@ -52,8 +52,7 @@ class CeleryCmd(CkanCommand):
         cmd = self.args[0]
         # Don't need to load the config as the db is generally not needed
         #self._load_config()
-        # But we do want to get the filename of the ini
-        self._get_config()
+        self.filename = os.path.abspath(self.options.config)
 
         # Initialise logger after the config is loaded, so it is not disabled.
         #self.log = logging.getLogger(__name__)
