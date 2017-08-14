@@ -269,54 +269,6 @@ def _update_resource(resource_id, queue, log):
     try_as_api = False
     requires_archive = True
 
-    url = resource['url']
-    if not url.startswith('http'):
-        url = config['ckan.site_url'].rstrip('/') + url
-
-    hosted_externally = not url.startswith(config['ckan.site_url'])
-    # if resource.get('resource_type') == 'file.upload' and not hosted_externally:
-    if resource.get('url_type') == 'upload' and not hosted_externally:
-        log.info("Won't attemp to archive resource uploaded locally: %s" % resource['url'])
-
-        upload = uploader.ResourceUpload(resource)
-        filepath = upload.get_path(resource['id'])
-
-        try:
-            hash, length = _file_hashnlength(filepath)
-        except IOError, e:
-            log.error('Error while accessing local resource %s: %s', filepath, e)
-
-            download_status_id = Status.by_text('URL request failed')
-            _save(download_status_id, e, resource)
-            return
-
-        mimetype = None
-        headers = None
-        content_type, content_encoding = mimetypes.guess_type(url)
-        if content_type:
-            mimetype = _clean_content_type(content_type)
-            headers = {'Content-Type': content_type}
-
-        download_result_mock = {'mimetype': mimetype,
-            'size': length,
-            'hash': hash,
-            'headers': headers,
-            'saved_file': filepath,
-            'url_redirected_to': url,
-            'request_type': 'GET'}
-
-        archive_result_mock = {'cache_filepath': filepath,
-        'cache_url': url}
-
-        # Success
-        _save(Status.by_text('Archived successfully'), '', resource,
-            download_result_mock['url_redirected_to'], download_result_mock, archive_result_mock)
-
-        # The return value is only used by tests. Serialized for Celery.
-        return json.dumps(dict(download_result_mock, **archive_result_mock))
-        # endif: processing locally uploaded resource
-
-
     log.info("Attempting to download resource: %s" % resource['url'])
     download_result = None
     download_status_id = Status.by_text('Archived successfully')
