@@ -274,7 +274,7 @@ def _update_resource(resource_id, queue, log):
     download_status_id = Status.by_text('Archived successfully')
     context = {
         'site_url': config.get('ckan.site_url_internally') or config['ckan.site_url'],
-        'cache_url_root': config.get('ckanext-archiver.cache_url_root'),
+        'cache_url_root': config.get('ckanext.archiver.cache_url_root'),
         'previous': Archival.get_for_resource(resource_id)
         }
     try:
@@ -540,8 +540,8 @@ def archive_resource(context, resource, log, result=None, url_timeout=30):
     # calculate the cache_url
     if not context.get('cache_url_root'):
         log.warning('Not saved cache_url because no value for '
-                    'ckanext-archiver.cache_url_root in config')
-        raise ArchiveError(_('No value for ckanext-archiver.cache_url_root in config'))
+                    'ckanext.archiver.cache_url_root in config')
+        raise ArchiveError(_('No value for ckanext.archiver.cache_url_root in config'))
     cache_url = urlparse.urljoin(context['cache_url_root'],
                                  '%s/%s' % (relative_archive_path, file_name))
     return {'cache_filepath': saved_file,
