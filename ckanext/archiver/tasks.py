@@ -23,6 +23,7 @@ from ckan.lib import uploader
 from ckan import plugins as p
 from ckanext.archiver import interfaces as archiver_interfaces
 from celery.utils.log import get_task_logger
+from ckan.controllers.admin import get_sysadmins
 
 toolkit = p.toolkit
 
@@ -390,6 +391,10 @@ def download(context, resource, url_timeout=30,
                                       % url,  url)
 
     headers = _set_user_agent_string({})
+
+    if len(get_sysadmins()) > 0:
+        sysadmin = get_sysadmins()[0]
+        headers['Authorization'] = sysadmin.apikey
 
     # start the download - just get the headers
     # May raise DownloadException
