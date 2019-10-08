@@ -382,11 +382,11 @@ def download(context, resource, url_timeout=30,
     if resource.get('url_type') == 'upload' and hosted_externally:
         # ckanext-cloudstorage for example does that
 
-        # enable ckanext-archiver.archive_cloud for qa to work on cloud resources
+        # enable ckanext.archiver.archive_cloud for qa to work on cloud resources
         # till https://github.com/ckan/ckanext-qa/issues/48 is resolved
         # Warning: this will result in double storage of all files below archival filesize limit
 
-        if not config.get('ckanext-archiver.archive_cloud', False):
+        if not config.get('ckanext.archiver.archive_cloud', False):
             raise ChooseNotToDownload('Skipping resource hosted externally to download resource: %s'
                                       % url,  url)
 
@@ -582,7 +582,7 @@ def get_plugins_waiting_on_ipipe():
 
 def verify_https():
     from pylons import config
-    return toolkit.asbool(config.get('ckanext-archiver.verify_https', True))
+    return toolkit.asbool(config.get('ckanext.archiver.verify_https', True))
 
 
 def _clean_content_type(ct):
@@ -934,5 +934,3 @@ def link_checker(context, data):
                 (res.status_code, res.reason)
             raise LinkHeadRequestError(error_message)
     return json.dumps(dict(headers))
-
-
