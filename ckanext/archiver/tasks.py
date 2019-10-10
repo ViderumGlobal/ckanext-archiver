@@ -33,6 +33,7 @@ USER_AGENT = 'ckanext-archiver'
 
 log = get_task_logger(__name__)
 
+log.error('@@@@@@@@@@@@@@@@@@@@@@@@ Start tasks')
 
 def register_translator():
     # Register a translator in this thread so that
@@ -238,6 +239,7 @@ def _update_resource(resource_id, queue, log):
         }
     If not successful, returns None.
     """
+    log.error('---------------------------- Start Update resource')
     from ckan import model
     from pylons import config
     from ckan.plugins import toolkit
@@ -250,10 +252,12 @@ def _update_resource(resource_id, queue, log):
     context_ = {'model': model, 'ignore_auth': True, 'session': model.Session}
     resource = get_action('resource_show')(context_, {'id': resource_id})
 
+    log.error('Context')
+    log.error(context)
     if not os.path.exists(settings.ARCHIVE_DIR):
         log.info("Creating archive directory: %s" % settings.ARCHIVE_DIR)
         os.mkdir(settings.ARCHIVE_DIR)
-
+    log.error(settings.ARCHIVE_DIR)
     def _save(status_id, exception, resource, url_redirected_to=None,
               download_result=None, archive_result=None):
         reason = u'%s' % exception
@@ -278,6 +282,8 @@ def _update_resource(resource_id, queue, log):
         'cache_url_root': config.get('ckanext.archiver.cache_url_root'),
         'previous': Archival.get_for_resource(resource_id)
         }
+    log.error('Context 2')
+    log.error(context)
     try:
         download_result = download(context, resource)
     except NotChanged, e:
@@ -337,6 +343,9 @@ def _update_resource(resource_id, queue, log):
     _save(Status.by_text('Archived successfully'), '', resource,
             download_result['url_redirected_to'], download_result, archive_result)
 
+    log.error('Archive result')
+    log.error(archive_result)
+    log.error('----------------------- End update Resource')
     # The return value is only used by tests. Serialized for Celery.
     return json.dumps(dict(download_result, **archive_result))
 
@@ -517,6 +526,7 @@ def archive_resource(context, resource, log, result=None, url_timeout=30):
 
     Returns: {cache_filepath, cache_url}
     """
+    log.error('============================== Start Archive Resource')
     from ckanext.archiver import default_settings as settings
     relative_archive_path = os.path.join(resource['id'][:2], resource['id'])
     archive_dir = os.path.join(settings.ARCHIVE_DIR, relative_archive_path)
@@ -543,12 +553,16 @@ def archive_resource(context, resource, log, result=None, url_timeout=30):
     log.info('Archived resource as: %s', saved_file)
 
     # calculate the cache_url
+    log.error('Context 3')
+    log.error(context)
     if not context.get('cache_url_root'):
         log.warning('Not saved cache_url because no value for '
                     'ckanext.archiver.cache_url_root in config')
         raise ArchiveError(_('No value for ckanext.archiver.cache_url_root in config'))
     cache_url = urlparse.urljoin(context['cache_url_root'],
                                  '%s/%s' % (relative_archive_path, file_name))
+    log.error(cache_url)
+    log.error('======================== End Archive Resource')
     return {'cache_filepath': saved_file,
             'cache_url': cache_url}
 

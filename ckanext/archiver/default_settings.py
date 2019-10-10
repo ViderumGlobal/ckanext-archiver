@@ -1,6 +1,10 @@
 from pylons import config
+import logging
+
+log = logging.getLogger(__name__)
 
 # directory to save downloaded files to
+log.error('++++++++++++++++++++++++++ Start config')
 ARCHIVE_DIR = config.get('ckanext.archiver.archive_dir', '/tmp/archive')
 
 # Max content-length of archived files, larger files will be ignored
@@ -11,3 +15,7 @@ USER_AGENT_STRING = config.get('ckanext.archiver.user_agent_string', None)
 if not USER_AGENT_STRING:
     USER_AGENT_STRING = '%s %s ckanext-archiver' % (
         config.get('ckan.site_title', ''), config.get('ckan.site_url'))
+
+log.error(config)
+log.error(ARCHIVE_DIR)
+log.error('++++++++++++++++++++++++++ End config')
