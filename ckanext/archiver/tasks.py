@@ -394,7 +394,8 @@ def download(context, resource, url_timeout=30,
 
     if len(get_sysadmins()) > 0:
         sysadmin = get_sysadmins()[0]
-        headers['Authorization'] = sysadmin.apikey
+        if url.startswith(config.get('ckan.site_url', '')):
+            headers['Authorization'] = sysadmin.apikey
 
     # start the download - just get the headers
     # May raise DownloadException
