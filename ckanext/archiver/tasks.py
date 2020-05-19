@@ -22,6 +22,8 @@ from ckan.lib.celery_app import celery
 from ckan.lib import uploader
 from ckan import plugins as p
 from ckanext.archiver import interfaces as archiver_interfaces
+from celery.utils.log import get_task_logger
+from ckan.controllers.admin import get_sysadmins
 
 toolkit = p.toolkit
 
@@ -29,6 +31,21 @@ ALLOWED_SCHEMES = set(('http', 'https', 'ftp'))
 
 USER_AGENT = 'ckanext-archiver'
 
+log = get_task_logger(__name__)
+
+
+def register_translator():
+    # Register a translator in this thread so that
+    # the _() functions in logic layer can work
+    from paste.registry import Registry
+    from pylons import translator
+    from ckan.lib.cli import MockTranslator
+    global registry
+    registry = Registry()
+    registry.prepare()
+    global translator_obj
+    translator_obj = MockTranslator()
+    registry.register(translator, translator_obj)
 
 def load_config(ckan_ini_filepath):
     import paste.deploy
@@ -110,7 +127,6 @@ def update_resource(ckan_ini_filepath, resource_id, queue='bulk'):
     '''
     load_config(ckan_ini_filepath)
 
-    log = update_resource.get_logger()
     log.info('Starting update_resource task: res_id=%r queue=%s', resource_id, queue)
 
     # HACK because of race condition #1481
@@ -136,8 +152,8 @@ def update_package(ckan_ini_filepath, package_id, queue='bulk'):
     Archive a package.
     '''
     load_config(ckan_ini_filepath)
+    register_translator()
 
-    log = update_package.get_logger()
     log.info('Starting update_package task: package_id=%r queue=%s',
              package_id, queue)
 
@@ -254,60 +270,12 @@ def _update_resource(resource_id, queue, log):
     try_as_api = False
     requires_archive = True
 
-    url = resource['url']
-    if not url.startswith('http'):
-        url = config['ckan.site_url'].rstrip('/') + url
-
-    hosted_externally = not url.startswith(config['ckan.site_url'])
-    # if resource.get('resource_type') == 'file.upload' and not hosted_externally:
-    if resource.get('url_type') == 'upload' and not hosted_externally:
-        log.info("Won't attemp to archive resource uploaded locally: %s" % resource['url'])
-
-        upload = uploader.ResourceUpload(resource)
-        filepath = upload.get_path(resource['id'])
-
-        try:
-            hash, length = _file_hashnlength(filepath)
-        except IOError, e:
-            log.error('Error while accessing local resource %s: %s', filepath, e)
-
-            download_status_id = Status.by_text('URL request failed')
-            _save(download_status_id, e, resource)
-            return
-
-        mimetype = None
-        headers = None
-        content_type, content_encoding = mimetypes.guess_type(url)
-        if content_type:
-            mimetype = _clean_content_type(content_type)
-            headers = {'Content-Type': content_type}
-
-        download_result_mock = {'mimetype': mimetype,
-            'size': length,
-            'hash': hash,
-            'headers': headers,
-            'saved_file': filepath,
-            'url_redirected_to': url,
-            'request_type': 'GET'}
-
-        archive_result_mock = {'cache_filepath': filepath,
-        'cache_url': url}
-
-        # Success
-        _save(Status.by_text('Archived successfully'), '', resource,
-            download_result_mock['url_redirected_to'], download_result_mock, archive_result_mock)
-
-        # The return value is only used by tests. Serialized for Celery.
-        return json.dumps(dict(download_result_mock, **archive_result_mock))
-        # endif: processing locally uploaded resource
-
-
     log.info("Attempting to download resource: %s" % resource['url'])
     download_result = None
     download_status_id = Status.by_text('Archived successfully')
     context = {
         'site_url': config.get('ckan.site_url_internally') or config['ckan.site_url'],
-        'cache_url_root': config.get('ckanext-archiver.cache_url_root'),
+        'cache_url_root': config.get('ckanext.archiver.cache_url_root'),
         'previous': Archival.get_for_resource(resource_id)
         }
     try:
@@ -399,7 +367,6 @@ def download(context, resource, url_timeout=30,
     '''
     from ckanext.archiver import default_settings as settings
     from pylons import config
-    log = update_resource.get_logger()
 
     if max_content_length == 'default':
         max_content_length = settings.MAX_CONTENT_LENGTH
@@ -415,15 +382,20 @@ def download(context, resource, url_timeout=30,
     if resource.get('url_type') == 'upload' and hosted_externally:
         # ckanext-cloudstorage for example does that
 
-        # enable ckanext-archiver.archive_cloud for qa to work on cloud resources
+        # enable ckanext.archiver.archive_cloud for qa to work on cloud resources
         # till https://github.com/ckan/ckanext-qa/issues/48 is resolved
         # Warning: this will result in double storage of all files below archival filesize limit
 
-        if not config.get('ckanext-archiver.archive_cloud', False):
+        if not config.get('ckanext.archiver.archive_cloud', False):
             raise ChooseNotToDownload('Skipping resource hosted externally to download resource: %s'
                                       % url,  url)
 
     headers = _set_user_agent_string({})
+
+    if len(get_sysadmins()) > 0:
+        sysadmin = get_sysadmins()[0]
+        if url.startswith(config.get('ckan.site_url', '')):
+            headers['Authorization'] = sysadmin.apikey
 
     # start the download - just get the headers
     # May raise DownloadException
@@ -574,8 +546,8 @@ def archive_resource(context, resource, log, result=None, url_timeout=30):
     # calculate the cache_url
     if not context.get('cache_url_root'):
         log.warning('Not saved cache_url because no value for '
-                    'ckanext-archiver.cache_url_root in config')
-        raise ArchiveError(_('No value for ckanext-archiver.cache_url_root in config'))
+                    'ckanext.archiver.cache_url_root in config')
+        raise ArchiveError(_('No value for ckanext.archiver.cache_url_root in config'))
     cache_url = urlparse.urljoin(context['cache_url_root'],
                                  '%s/%s' % (relative_archive_path, file_name))
     return {'cache_filepath': saved_file,
@@ -611,7 +583,7 @@ def get_plugins_waiting_on_ipipe():
 
 def verify_https():
     from pylons import config
-    return toolkit.asbool(config.get('ckanext-archiver.verify_https', True))
+    return toolkit.asbool(config.get('ckanext.archiver.verify_https', True))
 
 
 def _clean_content_type(ct):
@@ -850,7 +822,6 @@ def api_request(context, resource):
     and get a valid response. If it does it returns the response, otherwise
     Archives the response and stores what sort of request elicited it.
     '''
-    log = update_resource.get_logger()
     # 'resource' holds the results of the download and will get saved. Only if
     # an API request is successful do we want to save the details of it.
     # However download() gets altered for these API requests. So only give
@@ -904,7 +875,6 @@ def clean():
     """
     Remove all archived resources.
     """
-    log = clean.get_logger()
     log.error("clean task not implemented yet")
 
 
@@ -925,7 +895,6 @@ def link_checker(context, data):
 
     Returns a json dict of the headers of the request
     """
-    log = update_resource.get_logger()
     data = json.loads(data)
     url_timeout = data.get('url_timeout', 30)
 
@@ -966,5 +935,3 @@ def link_checker(context, data):
                 (res.status_code, res.reason)
             raise LinkHeadRequestError(error_message)
     return json.dumps(dict(headers))
-
-

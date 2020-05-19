@@ -486,7 +486,7 @@ class Archiver(CkanCommand):
             {'model': model, 'ignore_auth': True, 'defer_commit': True}, {}
         )
 
-        site_url_base = config['ckanext-archiver.cache_url_root'].rstrip('/')
+        site_url_base = config['ckanext.archiver.cache_url_root'].rstrip('/')
         old_dir_regex = re.compile(r'(.*)/([a-f0-9\-]+)/([^/]*)$')
         new_dir_regex = re.compile(r'(.*)/[a-f0-9]{2}/[a-f0-9\-]{36}/[^/]*$')
         for resource in model.Session.query(model.Resource).\
@@ -513,7 +513,7 @@ class Archiver(CkanCommand):
 
             if package and package.state == model.State.DELETED:
                 print 'Package is deleted'
-                continue       
+                continue
 
             if url_base != site_url_base:
                 print 'ERROR Base URL is incorrect: %r != %r' % (url_base, site_url_base)
