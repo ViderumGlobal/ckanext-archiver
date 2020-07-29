@@ -17,7 +17,7 @@ import urlparse
 
 from requests.packages import urllib3
 
-from ckan.common import _
+from ckan.common import _ , config
 from ckan.lib.celery_app import celery
 from ckan.lib import uploader
 from ckan import plugins as p
@@ -548,11 +548,52 @@ def archive_resource(context, resource, log, result=None, url_timeout=30):
         log.warning('Not saved cache_url because no value for '
                     'ckanext.archiver.cache_url_root in config')
         raise ArchiveError(_('No value for ckanext.archiver.cache_url_root in config'))
-    cache_url = urlparse.urljoin(context['cache_url_root'],
-                                 '%s/%s' % (relative_archive_path, file_name))
+
+    archiver_s3upload_enable = config.get('ckanext.archiver.s3upload_enable')
+
+    if archiver_s3upload_enable:
+        upload_obj, key_path = upload_archived_resource(file_name, saved_file)
+        cache_url =  generate_cache_url(upload_obj, key_path)
+    else:
+        cache_url = urlparse.urljoin(context['cache_url_root'],
+                                    '%s/%s' % (relative_archive_path, file_name))
+
     return {'cache_filepath': saved_file,
             'cache_url': cache_url}
 
+def upload_archived_resource(filename, saved_file):
+    '''
+    Uploads the resources to s3filestore in directory
+    <S3FILESTORE__AWS_BUCKET_NAME>/<S3FILESTORE__AWS_STORAGE_PATH>/archived_resources/
+    '''
+    storage_path = config.get('ckanext.s3filestore.aws_storage_path')
+
+    with open (saved_file, 'rb') as save_file:
+        upload = uploader.get_uploader('archived_resources')
+        upload.upload_file = save_file
+        upload.filename = filename
+        upload.filepath = os.path.join(storage_path, 'archived_resources', filename)
+        upload.clear = False
+        upload.upload(uploader.get_max_resource_size())
+
+    return upload, filename
+
+def generate_cache_url(upload_obj, key_path):
+    '''
+    Generates a presigned url to download the resource from the s3filestore
+    which expires after 1day(86400s) and returns that as cache_url
+    '''
+    bucket_name = config.get('ckanext.s3filestore.aws_bucket_name')
+    region = config.get('ckanext.s3filestore.region_name')
+    host_name = config.get('ckanext.s3filestore.host_name')
+    bucket = upload_obj.get_s3_bucket(bucket_name)
+    s3 = upload_obj.get_s3_session()
+    client = s3.client(service_name='s3', endpoint_url=host_name)
+    cache_url = client.generate_presigned_url(ClientMethod='get_object',
+                                              Params={'Bucket':bucket.name,'Key':key_path},
+                                              ExpiresIn=86400)
+
+    return cache_url
 
 def notify_resource(resource, queue, cache_filepath):
     '''
