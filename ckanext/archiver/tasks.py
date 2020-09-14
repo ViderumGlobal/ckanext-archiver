@@ -550,9 +550,10 @@ def archive_resource(context, resource, log, result=None, url_timeout=30):
         raise ArchiveError(_('No value for ckanext.archiver.cache_url_root in config'))
 
     archiver_s3upload_enable = config.get('ckanext.archiver.s3upload_enable')
+    resource_id_dir = relative_archive_path.split('/')[-1]
 
     if archiver_s3upload_enable:
-        upload_obj, key_path = upload_archived_resource(file_name, saved_file)
+        upload_obj, key_path = upload_archived_resource(resource_id_dir, file_name, saved_file)
         cache_url =  generate_cache_url(upload_obj, key_path)
     else:
         cache_url = urlparse.urljoin(context['cache_url_root'],
@@ -561,7 +562,7 @@ def archive_resource(context, resource, log, result=None, url_timeout=30):
     return {'cache_filepath': saved_file,
             'cache_url': cache_url}
 
-def upload_archived_resource(filename, saved_file):
+def upload_archived_resource(resource_id_dir, filename, saved_file):
     '''
     Uploads the resources to s3filestore in directory
     <S3FILESTORE__AWS_BUCKET_NAME>/<S3FILESTORE__AWS_STORAGE_PATH>/archived_resources/
@@ -572,7 +573,7 @@ def upload_archived_resource(filename, saved_file):
         upload = uploader.get_uploader('archived_resources')
         upload.upload_file = save_file
         upload.filename = filename
-        upload.filepath = os.path.join(storage_path, 'archived_resources', filename)
+        upload.filepath = os.path.join(storage_path, 'archived_resources', resource_id_dir, filename)
         upload.id = filename
         upload.clear = False
         upload.upload(uploader.get_max_resource_size())
