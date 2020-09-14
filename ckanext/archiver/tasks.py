@@ -573,10 +573,11 @@ def upload_archived_resource(filename, saved_file):
         upload.upload_file = save_file
         upload.filename = filename
         upload.filepath = os.path.join(storage_path, 'archived_resources', filename)
+        upload.id = filename
         upload.clear = False
         upload.upload(uploader.get_max_resource_size())
 
-    return upload, filename
+    return upload, filepath
 
 def generate_cache_url(upload_obj, key_path):
     '''
