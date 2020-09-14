@@ -149,8 +149,6 @@ class ArchiverPlugin(p.SingletonPlugin, p.toolkit.DefaultDatasetForm):
     def update_config(self, config):
         p.toolkit.add_template_directory(config, 'templates')
         archive_dir = config.get('ckanext.archiver.archive_dir')
-        if archive_dir:
-            p.toolkit.add_public_directory(config, archive_dir)
 
     # IActions
 
