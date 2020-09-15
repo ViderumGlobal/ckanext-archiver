@@ -578,7 +578,7 @@ def upload_archived_resource(resource_id_dir, filename, saved_file):
         upload.clear = False
         upload.upload(uploader.get_max_resource_size())
 
-    return upload, filepath
+    return upload, upload.filepath
 
 def generate_cache_url(upload_obj, key_path):
     '''
