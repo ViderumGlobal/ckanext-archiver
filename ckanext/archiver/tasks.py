@@ -568,12 +568,12 @@ def upload_archived_resource(resource_id_dir, filename, saved_file):
     <S3FILESTORE__AWS_BUCKET_NAME>/<S3FILESTORE__AWS_STORAGE_PATH>/archived_resources/
     '''
     
-    if not config.get('ckanext.s3filestore.aws_storage_path'):
+    storage_path = config.get('ckanext.s3filestore.aws_storage_path')
+
+    if not storage_path:
         log.warning('Not saved to filestore because no value for '
                     'ckanext.s3filestore.aws_storage_path in config')
         raise ArchiveError(_('No value for ckanext.s3filestore.aws_storage_path in config'))
-    
-    storage_path = config.get('ckanext.s3filestore.aws_storage_path')
 
     with open (saved_file, 'rb') as save_file:
         upload = uploader.get_uploader('archived_resources')
@@ -599,7 +599,7 @@ def generate_cache_url(upload_obj, key_path):
     client = s3.client(service_name='s3', endpoint_url=host_name)
     cache_url = client.generate_presigned_url(ClientMethod='get_object',
                                               Params={'Bucket':bucket.name,'Key':key_path},
-                                              ExpiresIn=86400)
+                                              ExpiresIn=604800)
 
     return cache_url
 
