@@ -278,10 +278,11 @@ Config settings
       * ``ckanext.archiver.s3upload_enable`` = True to enable upload to filestore. If unset or False, the resources are going to be archived locally instead of on s3filestore.
       * ``ckanext.s3filestore.aws_storage_path`` = my-site-name. Your filestore project path. For example ckan/storage_path/archived_resource_dir. This must be set in order to upload files to filestore.
 
-    The resources are uploaded to s3filestore in directory `<S3FILESTORE__AWS_BUCKET_NAME>/<S3FILESTORE__AWS_STORAGE_PATH>/archived_resources/resource_id/archive_resource_id`.
-    A cron job must be run atleast once a week to update archived resources and generate a presigned url to download the resources from the s3filestore.The presigned url expires after 7days(604800s) of running the `archiver update` command. 
+    The resources are uploaded to s3filestore in the directory ``s3filestore.aws_bucket_name/s3filestore.aws_storage_path/archived_resources/resource_id/``.
+    
+    A cron job must be run atleast once a week to update archived resources and generate a presigned url to download the resources from the s3filestore.The presigned url expires after 7days(604800s) of running the ``archiver update`` command.::
 
-      * ``0 0 * * 0 paster --plugin=ckanext-archiver archiver update -c /srv/app/production.ini``
+      0 0 * * 0 paster --plugin=ckanext-archiver archiver update -c /srv/app/production.ini
 
 Legacy settings
 ~~~~~~~~~~~~~~~
