@@ -270,6 +270,21 @@ Config settings
                 root /www/resource_cache;
             }
 
+6.  Alternatively, you can upload archived resources to s3filestore. Make sure that you 
+    have properly setup `ckanext-s3filestore <https://github.com/datopian/ckanext-s3filestore>`_.
+
+    Add the following values to the CKAN config file:
+
+      * ``ckanext.archiver.s3upload_enable`` = ``True`` to enable upload to cloud storage, defaults to false.
+      * ``ckanext.s3filestore.aws_storage_path`` = ``my-site-name``. Your filestore project path. For example ckan/storage_path/archived_resource_dir. This is required to upload the archived resources.
+
+    The resources are uploaded to s3filestore in the directory ``s3filestore.aws_bucket_name/s3filestore.aws_storage_path/archived_resources/resource_id/``.
+    
+    A cron job must be run atleast once a week to update archived resources and generate a presigned url to download the resources from the ``s3filestore``. The presigned url expires after 7 days(604800s) of running the ``archiver update`` command.::
+      
+      0 0 * * 0 paster --plugin=ckanext-archiver archiver update -c /srv/app/production.ini
+
+
 Legacy settings
 ~~~~~~~~~~~~~~~
 
